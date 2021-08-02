@@ -153,11 +153,20 @@ void rtpclient::connect_to(const std::string &address,
     ((sockaddr_in *)serveraddr->ai_addr)->sin_port =
         htons(remote_base_port + 1);
 
-    servaddr.sin6_port = htons(local_base_port + 1);
+    servaddr.sin6_port = 0;
     auto ret = bind(midi_socket, (struct sockaddr *)&servaddr, len);
     if (ret < 0) {
       throw rtpmidid::exception("Could not bind to local port");
     }
+
+    // figure out to which port we've bound
+    if (getsockname(midi_socket, (struct sockaddr *)&servaddr, &len) < 0) {
+      DEBUG("Error finding local port");
+      throw rtpmidid::exception("Can not find local port: {}",
+                                strerror(errno));
+    }
+
+    DEBUG("Local port {}", servaddr.sin6_port);
 
     if (connect(midi_socket, serveraddr->ai_addr, serveraddr->ai_addrlen) < 0) {
       DEBUG("Error opening midi socket, port {}", port);

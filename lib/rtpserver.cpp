@@ -89,7 +89,6 @@ rtpserver::rtpserver(std::string _name, const std::string &port)
     control_port = ntohs(addr.sin6_port);
 
     DEBUG("Control port at {}:{}", host, control_port);
-    midi_port = control_port + 1;
 
     poller.add_fd_in(control_socket,
                      [this](int) { this->data_ready(rtppeer::CONTROL_PORT); });
@@ -98,12 +97,24 @@ rtpserver::rtpserver(std::string _name, const std::string &port)
     if (midi_socket < 0) {
       throw rtpmidid::exception("Can not open MIDI socket. Out of sockets?");
     }
+
     // Reuse listenaddr, just on next port
-    ((sockaddr_in *)listenaddr->ai_addr)->sin_port = htons(midi_port);
+    ((sockaddr_in *)listenaddr->ai_addr)->sin_port = 0;
     if (bind(midi_socket, listenaddr->ai_addr, listenaddr->ai_addrlen) < 0) {
       throw rtpmidid::exception("Can not open MIDI socket. {}.",
                                 strerror(errno));
     }
+
+    // figure out to which port we've bound
+    if (getsockname(midi_socket, (struct sockaddr *)listenaddr->ai_addr, &listenaddr->ai_addrlen) < 0) {
+      DEBUG("Error finding local port");
+      throw rtpmidid::exception("Can not find local port: {}",
+                                strerror(errno));
+    }
+
+    midi_port = ntohs(((sockaddr_in *)listenaddr->ai_addr)->sin_port);
+    DEBUG("Local MIDI port {}", midi_port);
+
     poller.add_fd_in(midi_socket,
                      [this](int) { this->data_ready(rtppeer::MIDI_PORT); });
   } catch (const std::exception &e) {
