@@ -37,8 +37,8 @@ using namespace rtpmidid;
 rtppeer::rtppeer(std::string _name) : local_name(std::move(_name)) {
   status = NOT_CONNECTED;
   remote_ssrc = 0;
-  local_ssrc = rtpmidi_rand() & 0x0FFFF;
-  seq_nr = rtpmidi_rand() & 0x0FFFF;
+  local_ssrc = ::rtpmidid::rand_u32() & 0x0FFFF;
+  seq_nr = ::rtpmidid::rand_u32() & 0x0FFFF;
   seq_nr_ack = seq_nr;
   remote_seq_nr = 0; // Just not radom memory data
   timestamp_start = 0;
@@ -369,9 +369,9 @@ void rtppeer::parse_feedback(io_bytes_reader &buffer) {
 void rtppeer::parse_midi(io_bytes_reader &buffer) {
   // auto _headers =
   buffer.read_uint8(); // Ignore RTP header flags (Byte 0)
-  auto rtpmidi_id = buffer.read_uint8();
+  auto rtpmidi_id = buffer.read_uint8() & 0x7f;
   if (rtpmidi_id != 0x61) { // next Byte: Payload type
-    WARNING("Received packet which is not RTP MIDI. Ignoring.");
+    WARNING("Received packet (ID: 0x{:02x}) which is not RTP MIDI. Ignoring.", rtpmidi_id);
     return;
   }
   remote_seq_nr = buffer.read_uint16(); // Ignore RTP sequence no.
