@@ -307,15 +307,21 @@ void rtpmidid_t::connect_client(const std::string &name, int aseq_port) {
 }
 
 void rtpmidid_t::disconnect_client(int aseq_port, int reasoni) {
+  constexpr const char *failure_reasons[] = { "can't connect",
+	  "peer disconnected", "connection refused", "disconnect",
+	  "connection timeout", "CK timeout" };
   auto peer_info = &known_clients[aseq_port];
   auto reason = static_cast<rtppeer::disconnect_reason_e>(reasoni);
 
-  DEBUG("Disconnect signal: {}", reason);
-  // If cant connec t(network problem) or rejected, try again in next
+  DEBUG("Disconnect signal: {} ({})", failure_reasons[reason], reason);
+
+  // If can't connect (network problem) or rejected, try again next
   // address.
   switch (reason) {
   case rtppeer::disconnect_reason_e::CANT_CONNECT:
   case rtppeer::disconnect_reason_e::CONNECTION_REJECTED:
+  case rtppeer::disconnect_reason_e::CONNECT_TIMEOUT:
+  case rtppeer::disconnect_reason_e::CK_TIMEOUT:
     if (peer_info->connect_attempts >= (3 * peer_info->addresses.size())) {
       ERROR("Too many attempts to connect. Not trying again. Attempted "
             "{} times.",
@@ -334,13 +340,6 @@ void rtpmidid_t::disconnect_client(int aseq_port, int reasoni) {
       auto &address = peer_info->addresses[peer_info->addr_idx];
       peer_info->peer->connect_to(address.address, address.port);
     });
-    break;
-
-  case rtppeer::disconnect_reason_e::CONNECT_TIMEOUT:
-  case rtppeer::disconnect_reason_e::CK_TIMEOUT:
-    WARNING("Timeout (during {}). Not trying again.", reason == rtppeer::disconnect_reason_e::CK_TIMEOUT ? "handshake" : "setup");
-    remove_client(peer_info->aseq_port);
-    return;
     break;
 
   case rtppeer::disconnect_reason_e::PEER_DISCONNECTED:
