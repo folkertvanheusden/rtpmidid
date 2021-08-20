@@ -273,7 +273,7 @@ void rtpserver::sendto(const io_bytes_reader &pb, rtppeer::port_e port,
 
   for(;;) {
     ssize_t res =
-      ::sendto(socket, pb.start, pb.size(), MSG_CONFIRM,
+      ::sendto(socket, pb.start, pb.size(), 0,
                (const struct sockaddr *)address, sizeof(struct sockaddr_in6));
 
     if (static_cast<uint32_t>(res) == pb.size())
