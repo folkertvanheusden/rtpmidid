@@ -222,8 +222,13 @@ void aseq_t::read_ready() {
       auto name = get_client_name(&ev->data.addr);
       auto type = get_client_type(&ev->data.addr);
       auto port = port_t(ev->data.addr.client, ev->data.addr.port);
-      DEBUG("Client start {} {} {}", name, type, port);
-      added_port_announcement(name, type, port);
+      if (snd_seq_client_id(seq) != ev->data.addr.client) {
+        DEBUG("Client start {} {} {}", name, type, port);
+        added_port_announcement(name, type, port);
+      }
+      else {
+        DEBUG("Ignore {} {} {}", name, type, port);
+      }
     } break;
     case SND_SEQ_EVENT_PORT_EXIT: {
       auto port = port_t(ev->data.addr.client, ev->data.addr.port);
